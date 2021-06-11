@@ -1,0 +1,17 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander/esm.mjs';
+import loadPage from '../index.js';
+
+const program = new Command();
+
+program
+  .arguments('<pageURL>')
+  .option('-o, --output <filepath>', 'output path for the webpage', process.cwd())
+  .action((pageURL, options, command) => {
+    loadPage(pageURL, options.output)
+      .then(result => console.log(result)
+    );
+  });
+
+program.parse(process.argv);
