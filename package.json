@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Download web pages with resources",
   "bin": {
-    "nodejs-package": "bin/page-loader.js"
+    "page-loader": "bin/page-loader.js"
+  },
+  "engines": {
+    "node": ">=14"
   },
   "scripts": {
     "test": "npx jest --bail"
