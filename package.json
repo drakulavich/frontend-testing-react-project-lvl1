@@ -20,7 +20,6 @@
   "bugs": {
     "url": "https://github.com/drakulavich/frontend-testing-react-project-lvl1/issues"
   },
-  "type": "module",
   "homepage": "https://github.com/drakulavich/frontend-testing-react-project-lvl1#readme",
   "devDependencies": {
     "@babel/core": "^7.14.5",
