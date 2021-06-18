@@ -10,7 +10,7 @@ program
   .option('-o, --output <filepath>', 'output path for the webpage', process.cwd())
   .action((pageURL, options) => {
     loadPage(pageURL, options.output)
-      .then((result) => console.log(result));
+      .then((result) => console.log(result.filepath));
   });
 
 program.parse(process.argv);
