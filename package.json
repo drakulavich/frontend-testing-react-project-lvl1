@@ -11,6 +11,7 @@
   "scripts": {
     "test": "npx jest --bail"
   },
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/drakulavich/frontend-testing-react-project-lvl1.git"
