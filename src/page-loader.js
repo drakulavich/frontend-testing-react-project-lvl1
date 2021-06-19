@@ -7,12 +7,19 @@ import { createWriteStream } from 'fs';
 import _ from 'lodash';
 import path from 'path';
 
-const buildFilename = (urlString) => {
+const urlToFilename = (urlString) => {
   const url = new URL(urlString);
-  const urlWithoutProtocol = _.trim(`${url.host}${url.pathname}`, '/');
+  const resource = url.pathname.split('.');
+  const urlWithoutProtocol = _.trim(`${url.host}${resource[0]}`, '/');
+
+  if (resource.length > 1) {
+    return `${urlWithoutProtocol.replace(/[\W_]+/g, '-')}.${resource[1]}`;
+  }
 
   return `${urlWithoutProtocol.replace(/[\W_]+/g, '-')}`;
 };
+
+const urlToFilepath = (urlString, outputPath) => path.join(outputPath, urlToFilename(urlString));
 
 const downloadImage = async (imageUrl, imagePath) => {
   // axios image download with response type "stream"
@@ -40,22 +47,22 @@ const replaceImages = (urlString, content, outputPath) => {
 
   const resources = [];
   $('img').each((i, image) => {
-    const imgSrc = image.attribs.src;
+    const imgSrc = _.trim(image.attribs.src, '/');
     if (imgSrc.startsWith('http') && !imgSrc.includes(url.host)) {
       // skip third party domains
       return;
     }
-    const imageUrl = `${url.protocol}//${url.host}${imgSrc}`;
+    const imageUrl = `${url.protocol}//${url.host}/${imgSrc}`;
 
     // build filename
-    const imagePath = path.join(outputPath, `${buildFilename(urlString)}_files`, buildFilename(imageUrl));
+    const imagePath = path.join(`${urlToFilepath(urlString, outputPath)}_files`, urlToFilename(imageUrl));
     // prepare list to download
     resources.push({
       resourceUrl: imageUrl,
       filepath: imagePath,
     });
     // replace src
-    image.attribs.src = path.join(`${buildFilename(urlString)}_files`, buildFilename(imageUrl));
+    image.attribs.src = path.join(`${urlToFilename(urlString)}_files`, urlToFilename(imageUrl));
   });
 
   return {
@@ -67,15 +74,19 @@ const replaceImages = (urlString, content, outputPath) => {
 export default async (urlString, outputPath) => {
   const page = await axios.get(urlString);
   const newPage = replaceImages(urlString, page.data, outputPath);
+  // console.log(newPage.resources);
 
   if (newPage.resources) {
-    const resourcesPath = path.join(outputPath, `${buildFilename(urlString)}_files`);
-    await mkdir(resourcesPath);
+    const resourcesPath = `${urlToFilepath(urlString, outputPath)}_files`;
+    await mkdir(resourcesPath).catch((err) => {
+      if (err.code === 'EEXIST') return;
+      throw err;
+    });
 
     const promises = newPage.resources.map((img) => downloadImage(img.resourceUrl, img.filepath));
     await Promise.all(promises);
   }
-  const filename = path.join(outputPath, `${buildFilename(urlString)}.html`);
+  const filename = `${urlToFilepath(urlString, outputPath)}.html`;
   await writeFile(filename, newPage.html);
 
   return {
