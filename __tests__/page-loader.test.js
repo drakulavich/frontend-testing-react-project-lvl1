@@ -28,7 +28,8 @@ describe('page-loader', () => {
 
   it('should download page with images', async () => {
     nock('https://ru.hexlet.io')
-      .get('/cources')
+      .persist()
+      .get('/courses')
       .replyWithFile(200, getFixturePath('hexlet-courses.html'), {
         'Content-Type': 'text/html; charset=UTF-8',
       })
@@ -39,9 +40,17 @@ describe('page-loader', () => {
       .get('/assets/testing/pyramid.jpeg')
       .replyWithFile(200, getFixturePath('pyramid.jpeg'), {
         'Content-Type': 'image/jpeg',
+      })
+      .get('/assets/application.css')
+      .replyWithFile(200, getFixturePath('application.css'), {
+        'Content-Type': 'text/css',
+      })
+      .get('/packs/js/runtime.js')
+      .replyWithFile(200, getFixturePath('runtime.js'), {
+        'Content-Type': 'text/javascript',
       });
 
-    const { filepath, resourceFiles } = await loadPage('https://ru.hexlet.io/cources', tempPath);
+    const { filepath, resourceFiles } = await loadPage('https://ru.hexlet.io/courses', tempPath);
 
     const expectedHtml = await fs.readFile(getFixturePath('/expected/hexlet-courses-result.html'), 'utf-8');
     const resultHtml = await fs.readFile(filepath, 'utf-8');

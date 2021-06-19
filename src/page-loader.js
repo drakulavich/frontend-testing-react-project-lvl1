@@ -21,15 +21,15 @@ const urlToFilename = (urlString) => {
 
 const urlToFilepath = (urlString, outputPath) => path.join(outputPath, urlToFilename(urlString));
 
-const downloadImage = async (imageUrl, imagePath) => {
-  // axios image download with response type "stream"
+const downloadResource = async (sourceUrl, targetPath) => {
+  // axios file download with response type "stream"
   const response = await axios({
     method: 'GET',
-    url: imageUrl,
+    url: sourceUrl,
     responseType: 'stream',
   });
   // pipe the result stream into a file on disc
-  response.data.pipe(createWriteStream(imagePath));
+  response.data.pipe(createWriteStream(targetPath));
   // return a promise and resolve when download finishes
   return new Promise((resolve, reject) => {
     response.data.on('end', () => {
@@ -41,28 +41,40 @@ const downloadImage = async (imageUrl, imagePath) => {
   });
 };
 
-const replaceImages = (urlString, content, outputPath) => {
+const replaceResources = (urlString, content, outputPath) => {
+  const supportedTags = {
+    img: 'src',
+    script: 'src',
+    link: 'href',
+  };
+
   const url = new URL(urlString);
   const $ = cheerio.load(content);
 
   const resources = [];
-  $('img').each((i, image) => {
-    const imgSrc = _.trim(image.attribs.src, '/');
-    if (imgSrc.startsWith('http') && !imgSrc.includes(url.host)) {
-      // skip third party domains
-      return;
-    }
-    const imageUrl = `${url.protocol}//${url.host}/${imgSrc}`;
+  Object.entries(supportedTags).forEach(([tag, srcAttribute]) => {
+    $(tag).each((i, resource) => {
+      const resourceSrc = _.trim(resource.attribs[srcAttribute], '/');
 
-    // build filename
-    const imagePath = path.join(`${urlToFilepath(urlString, outputPath)}_files`, urlToFilename(imageUrl));
-    // prepare list to download
-    resources.push({
-      resourceUrl: imageUrl,
-      filepath: imagePath,
+      let resourceUrl;
+      if (resourceSrc.startsWith('http')) {
+        // skip third party domains
+        if (!resourceSrc.includes(url.host)) return;
+        resourceUrl = resourceSrc;
+      } else {
+        resourceUrl = `${url.protocol}//${url.host}/${resourceSrc}`;
+      }
+
+      // build filename
+      const resourcePath = path.join(`${urlToFilepath(urlString, outputPath)}_files`, urlToFilename(resourceUrl));
+      // prepare list to download
+      resources.push({
+        remote: resourceUrl,
+        filepath: resourcePath,
+      });
+      // replace attr with local filepath
+      resource.attribs[srcAttribute] = path.join(`${urlToFilename(urlString)}_files`, urlToFilename(resourceUrl));
     });
-    // replace src
-    image.attribs.src = path.join(`${urlToFilename(urlString)}_files`, urlToFilename(imageUrl));
   });
 
   return {
@@ -73,7 +85,7 @@ const replaceImages = (urlString, content, outputPath) => {
 
 export default async (urlString, outputPath) => {
   const page = await axios.get(urlString);
-  const newPage = replaceImages(urlString, page.data, outputPath);
+  const newPage = replaceResources(urlString, page.data, outputPath);
   // console.log(newPage.resources);
 
   if (newPage.resources) {
@@ -83,7 +95,8 @@ export default async (urlString, outputPath) => {
       throw err;
     });
 
-    const promises = newPage.resources.map((img) => downloadImage(img.resourceUrl, img.filepath));
+    const promises = newPage.resources
+      .map((resource) => downloadResource(resource.remote, resource.filepath));
     await Promise.all(promises);
   }
   const filename = `${urlToFilepath(urlString, outputPath)}.html`;
@@ -91,6 +104,6 @@ export default async (urlString, outputPath) => {
 
   return {
     filepath: filename,
-    resourceFiles: newPage.resources.map((img) => img.filepath),
+    resourceFiles: newPage.resources.map((resource) => resource.filepath),
   };
 };
