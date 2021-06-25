@@ -88,12 +88,15 @@ const replaceResources = (urlString, content, outputPath) => {
 
   return {
     html: $.html(),
-    resources,
+    resources: _.uniqBy(resources, 'remote'),
   };
 };
 
 export default async (urlString, outputPath) => {
-  const page = await axios.get(urlString);
+  const page = await axios.get(urlString).catch((err) => {
+    console.error(`Error on ${urlString} fetching: ${err.message}`);
+    process.exit(1);
+  });
   const newPage = replaceResources(urlString, page.data, outputPath);
   logApp('Resources detected on page %s: %O', urlString, newPage.resources);
 
@@ -105,7 +108,9 @@ export default async (urlString, outputPath) => {
     });
 
     const promises = newPage.resources
-      .map((resource) => downloadResource(resource.remote, resource.filepath));
+      .map((resource) => downloadResource(resource.remote, resource.filepath).catch((err) => {
+        console.error(`Error on ${resource.remote} resource downloading: ${err.message}`);
+      }));
     await Promise.all(promises);
   }
   const filename = path.join(outputPath, urlToFilename(urlString, '.html'));
