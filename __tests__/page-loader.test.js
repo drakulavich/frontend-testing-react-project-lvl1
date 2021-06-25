@@ -54,7 +54,6 @@ describe('page-loader', () => {
 
     const expectedHtml = await fs.readFile(getFixturePath('/expected/hexlet-courses-result.html'), 'utf-8');
     const resultHtml = await fs.readFile(filepath, 'utf-8');
-    console.log(filepath);
     expect(resultHtml).toEqual(expectedHtml);
 
     const expectedImage = await fs.readFile(getFixturePath('nodejs_logo.png'));

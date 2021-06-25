@@ -2,10 +2,15 @@
 import { URL } from 'url';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
+// eslint-disable-next-line no-unused-vars
+import axiosDebugLog from 'axios-debug-log';
 import { writeFile, mkdir } from 'fs/promises';
 import { createWriteStream } from 'fs';
 import _ from 'lodash';
+import debug from 'debug';
 import path from 'path';
+
+const logApp = debug('page-loader');
 
 const sanitizeString = (input) => input.replace(/[\W_]+/g, '-');
 
@@ -90,7 +95,7 @@ const replaceResources = (urlString, content, outputPath) => {
 export default async (urlString, outputPath) => {
   const page = await axios.get(urlString);
   const newPage = replaceResources(urlString, page.data, outputPath);
-  // console.log(newPage.resources);
+  logApp('Resources detected on page %s: %O', urlString, newPage.resources);
 
   if (newPage.resources) {
     const resourcesPath = resourcesDir(urlString, outputPath);
@@ -104,6 +109,7 @@ export default async (urlString, outputPath) => {
     await Promise.all(promises);
   }
   const filename = path.join(outputPath, urlToFilename(urlString, '.html'));
+  logApp('Page downloaded to %s', filename);
   await writeFile(filename, newPage.html);
 
   return {
