@@ -7,19 +7,22 @@ import { createWriteStream } from 'fs';
 import _ from 'lodash';
 import path from 'path';
 
-const urlToFilename = (urlString) => {
+const sanitizeString = (input) => input.replace(/[\W_]+/g, '-');
+
+const urlToFilename = (urlString, defaultExtension = '') => {
   const url = new URL(urlString);
   const resource = url.pathname.split('.');
   const urlWithoutProtocol = _.trim(`${url.host}${resource[0]}`, '/');
+  const sanitized = sanitizeString(urlWithoutProtocol);
 
   if (resource.length > 1) {
-    return `${urlWithoutProtocol.replace(/[\W_]+/g, '-')}.${resource[1]}`;
+    // append the original extension
+    return `${sanitized}.${resource.slice(1).join('.')}`;
   }
-
-  return `${urlWithoutProtocol.replace(/[\W_]+/g, '-')}`;
+  return `${sanitized}${defaultExtension}`;
 };
 
-const urlToFilepath = (urlString, outputPath) => path.join(outputPath, urlToFilename(urlString));
+const resourcesDir = (urlString, outputPath) => path.join(outputPath, `${urlToFilename(urlString)}_files`);
 
 const downloadResource = async (sourceUrl, targetPath) => {
   // axios file download with response type "stream"
@@ -66,14 +69,15 @@ const replaceResources = (urlString, content, outputPath) => {
       }
 
       // build filename
-      const resourcePath = path.join(`${urlToFilepath(urlString, outputPath)}_files`, urlToFilename(resourceUrl));
+      const resourcePath = path.join(resourcesDir(urlString, outputPath), urlToFilename(resourceUrl, '.html'));
       // prepare list to download
       resources.push({
         remote: resourceUrl,
         filepath: resourcePath,
       });
-      // replace attr with local filepath
-      resource.attribs[srcAttribute] = path.join(`${urlToFilename(urlString)}_files`, urlToFilename(resourceUrl));
+      // replace attr with RELATIVE local filepath
+      // eslint-disable-next-line no-param-reassign
+      resource.attribs[srcAttribute] = path.join(resourcesDir(urlString, ''), urlToFilename(resourceUrl, '.html'));
     });
   });
 
@@ -89,7 +93,7 @@ export default async (urlString, outputPath) => {
   // console.log(newPage.resources);
 
   if (newPage.resources) {
-    const resourcesPath = `${urlToFilepath(urlString, outputPath)}_files`;
+    const resourcesPath = resourcesDir(urlString, outputPath);
     await mkdir(resourcesPath).catch((err) => {
       if (err.code === 'EEXIST') return;
       throw err;
@@ -99,7 +103,7 @@ export default async (urlString, outputPath) => {
       .map((resource) => downloadResource(resource.remote, resource.filepath));
     await Promise.all(promises);
   }
-  const filename = `${urlToFilepath(urlString, outputPath)}.html`;
+  const filename = path.join(outputPath, urlToFilename(urlString, '.html'));
   await writeFile(filename, newPage.html);
 
   return {

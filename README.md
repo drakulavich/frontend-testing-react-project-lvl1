@@ -5,3 +5,4 @@
 
 * Первый шаг: https://asciinema.org/a/Ej325xHSzGY8aHBY5u0jBK1Be
 * Второй шаг: https://asciinema.org/a/aJWxVLL9UGNDyLSqHuA0pGqU0
+* Третий шаг: https://asciinema.org/a/ioHjrY3JxdXFvDaorDDbG64ln
