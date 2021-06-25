@@ -26,7 +26,7 @@ describe('page-loader', () => {
     expect(fileContent).toEqual('<html><head></head><body>Response here</body></html>');
   });
 
-  it('should download page with images', async () => {
+  it('should download page with resources', async () => {
     nock('https://ru.hexlet.io')
       .persist()
       .get('/courses')
