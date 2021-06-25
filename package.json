@@ -9,7 +9,8 @@
     "node": ">=14"
   },
   "scripts": {
-    "test": "npx jest --bail"
+    "test": "DEBUG=page-loader npx jest --bail",
+    "test-nock": "DEBUG=nock.* npx jest --bail"
   },
   "type": "module",
   "repository": {
@@ -38,8 +39,10 @@
   },
   "dependencies": {
     "axios": "^0.21.1",
+    "axios-debug-log": "^0.8.2",
     "cheerio": "^1.0.0-rc.10",
     "commander": "^7.2.0",
+    "debug": "^4.3.1",
     "lodash": "^4.17.21"
   }
 }

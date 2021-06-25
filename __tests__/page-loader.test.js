@@ -26,7 +26,7 @@ describe('page-loader', () => {
     expect(fileContent).toEqual('<html><head></head><body>Response here</body></html>');
   });
 
-  it('should download page with images', async () => {
+  it('should download page with resources', async () => {
     nock('https://ru.hexlet.io')
       .persist()
       .get('/courses')
@@ -54,7 +54,6 @@ describe('page-loader', () => {
 
     const expectedHtml = await fs.readFile(getFixturePath('/expected/hexlet-courses-result.html'), 'utf-8');
     const resultHtml = await fs.readFile(filepath, 'utf-8');
-    console.log(filepath);
     expect(resultHtml).toEqual(expectedHtml);
 
     const expectedImage = await fs.readFile(getFixturePath('nodejs_logo.png'));
