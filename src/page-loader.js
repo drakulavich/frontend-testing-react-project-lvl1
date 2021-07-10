@@ -69,7 +69,8 @@ const replaceResources = (urlString, content, outputPath) => {
       let resourceUrl;
       if (resourceSrc.startsWith('http')) {
         // skip third party domains
-        if (!resourceSrc.includes(url.host)) return;
+        const resUrl = new URL(resourceSrc);
+        if (url.host !== resUrl.host) return;
         resourceUrl = resourceSrc;
       } else {
         resourceUrl = `${url.protocol}//${url.host}/${resourceSrc}`;
