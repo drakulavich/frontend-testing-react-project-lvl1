@@ -102,7 +102,6 @@ export default async (urlString, outputPath) => {
   const newPage = replaceResources(urlString, page.data, outputPath);
   logApp('Resources detected on page %s: %O', urlString, newPage.resources);
 
-  let resourceFiles = [];
   if (newPage.resources) {
     const resourcesPath = resourcesDir(urlString, outputPath);
     await mkdir(resourcesPath).catch((err) => {
@@ -116,7 +115,7 @@ export default async (urlString, outputPath) => {
         .catch((err) => {
           throw new ResourceAccessError(`${resource.remote} resource downloading: ${err.message}`);
         }));
-    resourceFiles = await Promise.all(promises);
+    await Promise.all(promises);
   }
   const filename = path.join(outputPath, urlToFilename(urlString, '.html'));
   logApp('Page downloaded to %s', filename);
@@ -126,6 +125,5 @@ export default async (urlString, outputPath) => {
 
   return {
     filepath: filename,
-    // resourceFiles,
   };
 };

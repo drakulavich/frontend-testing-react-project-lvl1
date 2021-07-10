@@ -59,14 +59,18 @@ describe('page-loader', () => {
         'Content-Type': 'text/javascript',
       });
 
-    const { filepath, resourceFiles } = await loadPage('https://ru.hexlet.io/courses', tempPath);
+    const { filepath } = await loadPage('https://ru.hexlet.io/courses', tempPath);
 
     const expectedHtml = await fs.readFile(getFixturePath('/expected/hexlet-courses-result.html'), 'utf-8');
     const resultHtml = await fs.readFile(filepath, 'utf-8');
     expect(resultHtml).toEqual(expectedHtml);
 
     const expectedImage = await fs.readFile(getFixturePath('nodejs_logo.png'));
-    const resultImage = await fs.readFile(resourceFiles[0]);
+    const resultImage = await fs.readFile(path.join(
+      tempPath,
+      'ru-hexlet-io-courses_files',
+      'ru-hexlet-io-assets-professions-nodejs.png',
+    ));
     expect(resultImage).toEqual(expectedImage);
   });
 
