@@ -9,6 +9,8 @@ import { createWriteStream } from 'fs';
 import _ from 'lodash';
 import debug from 'debug';
 import path from 'path';
+import ResourceAccessError from './errors/resource-error.js';
+import FsAccessError from './errors/fs-error.js';
 
 const logApp = debug('page-loader');
 
@@ -88,32 +90,41 @@ const replaceResources = (urlString, content, outputPath) => {
 
   return {
     html: $.html(),
-    resources,
+    resources: _.uniqBy(resources, 'remote'),
   };
 };
 
 export default async (urlString, outputPath) => {
-  const page = await axios.get(urlString);
+  const page = await axios.get(urlString).catch((err) => {
+    throw new ResourceAccessError(`${urlString} main page fetching: ${err.message}`);
+  });
   const newPage = replaceResources(urlString, page.data, outputPath);
   logApp('Resources detected on page %s: %O', urlString, newPage.resources);
 
+  let resourceFiles = [];
   if (newPage.resources) {
     const resourcesPath = resourcesDir(urlString, outputPath);
     await mkdir(resourcesPath).catch((err) => {
       if (err.code === 'EEXIST') return;
-      throw err;
+      throw new FsAccessError(`Can not create resources directory ${resourcesPath}: ${err.message}`);
     });
 
     const promises = newPage.resources
-      .map((resource) => downloadResource(resource.remote, resource.filepath));
-    await Promise.all(promises);
+      .map((resource) => downloadResource(resource.remote, resource.filepath)
+        .then(() => resource.filepath)
+        .catch((err) => {
+          throw new ResourceAccessError(`${resource.remote} resource downloading: ${err.message}`);
+        }));
+    resourceFiles = await Promise.all(promises);
   }
   const filename = path.join(outputPath, urlToFilename(urlString, '.html'));
   logApp('Page downloaded to %s', filename);
-  await writeFile(filename, newPage.html);
+  await writeFile(filename, newPage.html).catch((err) => {
+    throw new FsAccessError(`Can not save ${filename}: ${err.message}`);
+  });
 
   return {
     filepath: filename,
-    resourceFiles: newPage.resources.map((resource) => resource.filepath),
+    resourceFiles,
   };
 };
