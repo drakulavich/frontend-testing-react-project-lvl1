@@ -95,7 +95,7 @@ const replaceResources = (urlString, content, outputPath) => {
   };
 };
 
-export default async (urlString, outputPath) => {
+export default async (urlString, outputPath = process.cwd()) => {
   logApp('Download %s page to %s local path', urlString, outputPath);
 
   const page = await axios.get(urlString).catch((err) => {

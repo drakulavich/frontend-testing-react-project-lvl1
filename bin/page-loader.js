@@ -9,7 +9,7 @@ const program = new Command();
 
 program
   .arguments('<pageURL>')
-  .option('-o, --output <filepath>', 'output path for the webpage', process.cwd())
+  .option('-o, --output <filepath>', 'output path for the webpage')
   .action((pageURL, options) => {
     loadPage(pageURL, options.output)
       .then((result) => console.log(result.filepath))
