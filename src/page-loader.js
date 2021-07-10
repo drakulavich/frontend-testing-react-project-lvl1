@@ -126,6 +126,6 @@ export default async (urlString, outputPath) => {
 
   return {
     filepath: filename,
-    resourceFiles,
+    // resourceFiles,
   };
 };
