@@ -67,6 +67,9 @@ const replaceResources = (urlString, content, outputPath) => {
       const resourceSrc = _.trim(resource.attribs[srcAttribute], '/');
 
       let resourceUrl;
+      if (resourceSrc.includes('base64')) {
+        return;
+      }
       if (resourceSrc.startsWith('http')) {
         // skip third party domains
         const resUrl = new URL(resourceSrc);
