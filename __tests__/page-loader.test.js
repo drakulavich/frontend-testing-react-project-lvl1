@@ -24,17 +24,6 @@ describe('page-loader', () => {
     nock.enableNetConnect();
   });
 
-  it('should download page to the specified path', async () => {
-    nock('http://example.com')
-      .get('/users')
-      .reply(200, '<html><head></head><body>Response here</body></html>');
-
-    const { filepath } = await loadPage('http://example.com/users', tempPath);
-    const fileContent = await fs.readFile(filepath, 'utf-8');
-
-    expect(fileContent).toEqual('<html><head></head><body>Response here</body></html>');
-  });
-
   it('should download page with resources', async () => {
     nock('https://ru.hexlet.io')
       .persist()
@@ -65,7 +54,7 @@ describe('page-loader', () => {
     const resultHtml = await fs.readFile(filepath, 'utf-8');
     expect(resultHtml).toEqual(expectedHtml);
 
-    const assets = [
+    const assetsToCheck = [
       { in: 'nodejs.png', out: 'ru-hexlet-io-assets-professions-nodejs.png' },
       { in: 'pyramid.jpeg', out: 'ru-hexlet-io-assets-testing-pyramid.jpeg' },
       { in: 'application.css', out: 'ru-hexlet-io-assets-application.css' },
@@ -73,21 +62,21 @@ describe('page-loader', () => {
       { in: 'hexlet-courses.html', out: 'ru-hexlet-io-courses.html' },
     ];
 
-    assets.forEach(async (asset) => {
+    await Promise.all(assetsToCheck.map(async (asset) => {
       const expectedFile = await fs.readFile(getFixturePath(asset.in));
       const resultFile = await fs.readFile(path.join(tempPath, 'ru-hexlet-io-courses_files', asset.out));
 
       expect(resultFile).toEqual(expectedFile);
-    });
+    }));
   });
 
   it('should handle filesystem errors', async () => {
-    nock('http://example.com')
-      .get('/users')
+    nock('http://test.com')
+      .get('/books')
       .reply(200);
 
     const notExistingPath = path.join(tempPath, 'not_existing_dir');
-    await expect(loadPage('http://example.com/users', notExistingPath)).rejects.toThrow(FsAccessError);
+    await expect(loadPage('http://test.com/books', notExistingPath)).rejects.toThrow(FsAccessError);
   });
 
   it('should handle main page access errors', async () => {
