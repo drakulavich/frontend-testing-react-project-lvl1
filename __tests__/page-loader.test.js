@@ -2,6 +2,7 @@
 
 import nock from 'nock';
 import fs from 'fs/promises';
+import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
 import loadPage from '../src/page-loader.js';
@@ -9,6 +10,13 @@ import FsAccessError from '../src/errors/fs-error.js';
 import ResourceAccessError from '../src/errors/resource-error.js';
 
 const getFixturePath = (filename) => path.join(__dirname, '..', '__fixtures__', filename);
+
+const fileHash = async (filename) => {
+  const buffer = await fs.readFile(filename);
+  return crypto.createHash('md5')
+    .update(buffer)
+    .digest('hex');
+};
 
 let tempPath;
 
@@ -63,10 +71,10 @@ describe('page-loader', () => {
     ];
 
     await Promise.all(assetsToCheck.map(async (asset) => {
-      const expectedFile = await fs.readFile(getFixturePath(asset.in));
-      const resultFile = await fs.readFile(path.join(tempPath, 'ru-hexlet-io-courses_files', asset.out));
+      const expectedHash = await fileHash(getFixturePath(asset.in));
+      const resultHash = await fileHash(path.join(tempPath, 'ru-hexlet-io-courses_files', asset.out));
 
-      expect(expectedFile.equals(resultFile)).toBeTruthy();
+      expect(expectedHash).toEqual(resultHash);
     }));
   });
 
