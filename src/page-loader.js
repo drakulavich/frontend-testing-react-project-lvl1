@@ -5,7 +5,6 @@ import axios from 'axios';
 // eslint-disable-next-line no-unused-vars
 import axiosDebugLog from 'axios-debug-log';
 import { writeFile, mkdir } from 'fs/promises';
-import { createWriteStream } from 'fs';
 import _ from 'lodash';
 import debug from 'debug';
 import path from 'path';
@@ -32,23 +31,8 @@ const urlToFilename = (urlString, defaultExtension = '') => {
 const resourcesDir = (urlString, outputPath) => path.join(outputPath, `${urlToFilename(urlString)}_files`);
 
 const downloadResource = async (sourceUrl, targetPath) => {
-  // axios file download with response type "stream"
-  const response = await axios({
-    method: 'GET',
-    url: sourceUrl,
-    responseType: 'stream',
-  });
-  // pipe the result stream into a file on disc
-  response.data.pipe(createWriteStream(targetPath));
-  // return a promise and resolve when download finishes
-  return new Promise((resolve, reject) => {
-    response.data.on('end', () => {
-      resolve();
-    });
-    response.data.on('error', () => {
-      reject();
-    });
-  });
+  const res = await axios.get(sourceUrl, { responseType: 'arraybuffer' });
+  await writeFile(targetPath, res.data);
 };
 
 const replaceResources = (urlString, content, outputPath) => {
