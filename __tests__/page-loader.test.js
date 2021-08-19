@@ -43,7 +43,7 @@ describe('page-loader', () => {
         'Content-Type': 'text/html; charset=UTF-8',
       })
       .get('/assets/professions/nodejs.png')
-      .replyWithFile(200, getFixturePath('nodejs_logo.png'), {
+      .replyWithFile(200, getFixturePath('nodejs.png'), {
         'Content-Type': 'image/png',
       })
       .get('/assets/testing/pyramid.jpeg')
@@ -65,13 +65,20 @@ describe('page-loader', () => {
     const resultHtml = await fs.readFile(filepath, 'utf-8');
     expect(resultHtml).toEqual(expectedHtml);
 
-    const expectedImage = await fs.readFile(getFixturePath('nodejs_logo.png'));
-    const resultImage = await fs.readFile(path.join(
-      tempPath,
-      'ru-hexlet-io-courses_files',
-      'ru-hexlet-io-assets-professions-nodejs.png',
-    ));
-    expect(resultImage).toEqual(expectedImage);
+    const assets = [
+      { in: 'nodejs.png', out: 'ru-hexlet-io-assets-professions-nodejs.png' },
+      { in: 'pyramid.jpeg', out: 'ru-hexlet-io-assets-testing-pyramid.jpeg' },
+      { in: 'application.css', out: 'ru-hexlet-io-assets-application.css' },
+      { in: 'runtime.js', out: 'ru-hexlet-io-packs-js-runtime.js' },
+      { in: 'hexlet-courses.html', out: 'ru-hexlet-io-courses.html' },
+    ];
+
+    assets.forEach(async (asset) => {
+      const expectedFile = await fs.readFile(getFixturePath(asset.in));
+      const resultFile = await fs.readFile(path.join(tempPath, 'ru-hexlet-io-courses_files', asset.out));
+
+      expect(resultFile).toEqual(expectedFile);
+    });
   });
 
   it('should handle filesystem errors', async () => {
@@ -99,7 +106,7 @@ describe('page-loader', () => {
         'Content-Type': 'text/html; charset=UTF-8',
       })
       .get('/assets/professions/nodejs.png')
-      .replyWithFile(200, getFixturePath('nodejs_logo.png'), {
+      .replyWithFile(200, getFixturePath('nodejs.png'), {
         'Content-Type': 'image/png',
       })
       .get('/assets/testing/pyramid.jpeg')
