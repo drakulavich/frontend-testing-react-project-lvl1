@@ -66,7 +66,7 @@ describe('page-loader', () => {
       const expectedFile = await fs.readFile(getFixturePath(asset.in));
       const resultFile = await fs.readFile(path.join(tempPath, 'ru-hexlet-io-courses_files', asset.out));
 
-      expect(resultFile).toEqual(expectedFile);
+      expect(expectedFile.equals(resultFile)).toBeTruthy();
     }));
   });
 
