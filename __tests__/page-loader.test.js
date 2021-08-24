@@ -76,27 +76,27 @@ describe('page-loader', () => {
     }));
   });
 
-  // it('should handle filesystem errors', async () => {
-  //   nock('http://test.com')
-  //     .get('/books')
-  //     .reply(200);
+  it('should handle filesystem errors', async () => {
+    nock('http://test.com')
+      .get('/books')
+      .reply(200);
 
-  //   const notExistingPath = path.join(tempPath, 'not_existing_dir');
-  //   await expect(loadPage('http://test.com/books', notExistingPath)).rejects.toThrow();
-  // });
+    const notExistingPath = path.join(tempPath, 'not_existing_dir');
+    await expect(loadPage('http://test.com/books', notExistingPath)).rejects.toThrow();
+  });
 
-  // it('should handle resource access errors', async () => {
-  //   nock('https://ru.hexlet.io')
-  //     .persist()
-  //     .get('/courses')
-  //     .replyWithFile(200, getFixturePath('hexlet-courses.html'), {
-  //       'Content-Type': 'text/html; charset=UTF-8',
-  //     })
-  //     .get('/packs/js/runtime.js')
-  //     .replyWithFile(500, getFixturePath('runtime.js'), {
-  //       'Content-Type': 'text/javascript',
-  //     });
+  it('should handle resource access errors', async () => {
+    nock('https://ru.hexlet.io')
+      .persist()
+      .get('/courses')
+      .replyWithFile(200, getFixturePath('hexlet-courses.html'), {
+        'Content-Type': 'text/html; charset=UTF-8',
+      })
+      .get('/packs/js/runtime.js')
+      .replyWithFile(500, getFixturePath('runtime.js'), {
+        'Content-Type': 'text/javascript',
+      });
 
-  //   await expect(loadPage('https://ru.hexlet.io/courses', tempPath)).rejects.toThrow();
-  // });
+    await expect(loadPage('https://ru.hexlet.io/courses', tempPath)).rejects.toThrow();
+  });
 });
