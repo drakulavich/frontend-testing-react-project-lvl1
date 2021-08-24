@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
-import loadPage from '../src/page-loader.js';
+import loadPage from '../index.js';
 
 const getFixturePath = (filename) => path.join(__dirname, '..', '__fixtures__', filename);
 
