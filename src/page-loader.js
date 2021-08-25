@@ -13,13 +13,11 @@ import FsAccessError from './errors/fs-error.js';
 
 const logApp = debug('page-loader');
 
-const sanitizeString = (input) => input.replace(/[\W_]+/g, '-');
-
 const urlToFilename = (urlString, defaultExtension = '') => {
   const url = new URL(urlString);
   const resource = url.pathname.split('.');
   const urlWithoutProtocol = _.trim(`${url.host}${resource[0]}`, '/');
-  const sanitized = sanitizeString(urlWithoutProtocol);
+  const sanitized = urlWithoutProtocol.replace(/[\W_]+/g, '-');
 
   if (resource.length > 1) {
     // append the original extension
@@ -30,89 +28,89 @@ const urlToFilename = (urlString, defaultExtension = '') => {
 
 const resourcesDir = (urlString, outputPath) => path.join(outputPath, `${urlToFilename(urlString)}_files`);
 
-const downloadResource = async (sourceUrl, targetPath) => {
-  const res = await axios.get(sourceUrl, { responseType: 'arraybuffer' });
-  await writeFile(targetPath, res.data);
+const downloadResource = async (sourceUrl) => axios.get(sourceUrl, { responseType: 'arraybuffer' });
+
+const getResourceUrl = (pageUrl, source) => {
+  const pageUrlObj = new URL(pageUrl);
+  let result;
+
+  if (source.includes('base64')) {
+    return result;
+  }
+  if (source.startsWith('http')) {
+    // skip third party domains
+    const resourceUrlObj = new URL(source);
+    if (pageUrlObj.host !== resourceUrlObj.host) return result;
+    result = source;
+  } else {
+    // build full URL for resources like '/assets/me.jpg'
+    result = `${pageUrlObj.protocol}//${pageUrlObj.host}${source}`;
+  }
+
+  return result;
 };
 
-const replaceResources = (urlString, content, outputPath) => {
+const replaceToLocalResources = (pageUrl, content) => {
   const supportedTags = {
     img: 'src',
     script: 'src',
     link: 'href',
   };
-
-  const url = new URL(urlString);
   const $ = cheerio.load(content);
 
   const resources = [];
   Object.entries(supportedTags).forEach(([tag, srcAttribute]) => {
     $(tag).each((i, resource) => {
-      const resourceSrc = _.trim(resource.attribs[srcAttribute], '/');
+      const element = $(resource);
+      const resourceUrl = getResourceUrl(pageUrl, element.attr(srcAttribute));
+      if (!resourceUrl) return;
 
-      let resourceUrl;
-      if (resourceSrc.includes('base64')) {
-        return;
-      }
-      if (resourceSrc.startsWith('http')) {
-        // skip third party domains
-        const resUrl = new URL(resourceSrc);
-        if (url.host !== resUrl.host) return;
-        resourceUrl = resourceSrc;
-      } else {
-        resourceUrl = `${url.protocol}//${url.host}/${resourceSrc}`;
-      }
-
-      // build filename
-      const resourcePath = path.join(resourcesDir(urlString, outputPath), urlToFilename(resourceUrl, '.html'));
-      // prepare list to download
-      resources.push({
-        remote: resourceUrl,
-        filepath: resourcePath,
-      });
       // replace attr with RELATIVE local filepath
-      // eslint-disable-next-line no-param-reassign
-      resource.attribs[srcAttribute] = path.join(resourcesDir(urlString, ''), urlToFilename(resourceUrl, '.html'));
+      element.attr(srcAttribute, path.join(resourcesDir(pageUrl, ''), urlToFilename(resourceUrl, '.html')));
+      resources.push(resourceUrl);
     });
   });
 
   return {
     html: $.html(),
-    resources: _.uniqBy(resources, 'remote'),
+    resources: _.uniq(resources),
   };
 };
 
-export default async (urlString, outputPath = process.cwd()) => {
-  logApp('Download %s page to %s local path', urlString, outputPath);
+export default async (pageUrl, outputPath = process.cwd()) => {
+  logApp('Download %s page to %s local path', pageUrl, outputPath);
 
-  const page = await axios.get(urlString).catch((err) => {
-    throw new ResourceAccessError(`${urlString} main page fetching: ${err.message}`);
+  const page = await downloadResource(pageUrl).catch((err) => {
+    throw new ResourceAccessError(`${pageUrl} main page fetching: ${err.message}`);
   });
-  const newPage = replaceResources(urlString, page.data, outputPath);
-  logApp('Resources detected on page %s: %O', urlString, newPage.resources);
+  const newPage = replaceToLocalResources(pageUrl, page.data);
+  logApp('Resources detected on page %s: %O', pageUrl, newPage.resources);
 
   if (newPage.resources) {
-    const resourcesPath = resourcesDir(urlString, outputPath);
+    const resourcesPath = resourcesDir(pageUrl, outputPath);
     await mkdir(resourcesPath).catch((err) => {
       if (err.code === 'EEXIST') return;
       throw new FsAccessError(`Can not create resources directory ${resourcesPath}: ${err.message}`);
     });
 
     const promises = newPage.resources
-      .map((resource) => downloadResource(resource.remote, resource.filepath)
-        .then(() => resource.filepath)
+      .map((resource) => downloadResource(resource)
+        .then((result) => {
+          const localFilename = path.join(resourcesPath, urlToFilename(resource, '.html'));
+          writeFile(localFilename, result.data);
+        })
         .catch((err) => {
-          throw new ResourceAccessError(`${resource.remote} resource downloading: ${err.message}`);
+          throw new ResourceAccessError(`${resource} resource downloading: ${err.message}`);
         }));
     await Promise.all(promises);
   }
-  const filename = path.join(outputPath, urlToFilename(urlString, '.html'));
-  logApp('Page downloaded to %s', filename);
-  await writeFile(filename, newPage.html).catch((err) => {
-    throw new FsAccessError(`Can not save ${filename}: ${err.message}`);
+  const filepath = path.join(outputPath, urlToFilename(pageUrl, '.html'));
+  logApp('Page downloaded to %s', filepath);
+  await writeFile(filepath, newPage.html).catch((err) => {
+    throw new FsAccessError(`Can not save ${filepath}: ${err.message}`);
   });
 
   return {
-    filepath: filename,
+    filepath,
   };
 };
