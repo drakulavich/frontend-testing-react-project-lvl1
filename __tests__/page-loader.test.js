@@ -2,101 +2,99 @@
 
 import nock from 'nock';
 import fs from 'fs/promises';
-import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
 import loadPage from '../index.js';
 
 const getFixturePath = (filename) => path.join(__dirname, '..', '__fixtures__', filename);
 
-const fileHash = async (filename) => {
-  const buffer = await fs.readFile(filename);
-  return crypto.createHash('md5')
-    .update(buffer)
-    .digest('hex');
-};
-
 let tempPath;
+let expectedHtml;
 
 describe('page-loader', () => {
-  beforeEach(async () => {
+  beforeAll(() => {
     nock.disableNetConnect();
+  });
 
+  beforeEach(async () => {
     tempPath = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
   });
 
   afterEach(() => {
     nock.cleanAll();
-    nock.enableNetConnect();
   });
 
-  it('should download page with resources', async () => {
-    nock('https://ru.hexlet.io')
-      .persist()
-      .get('/courses')
-      .replyWithFile(200, getFixturePath('hexlet-courses.html'), {
-        'Content-Type': 'text/html; charset=UTF-8',
-      })
-      .get('/assets/professions/nodejs.png')
-      .replyWithFile(200, getFixturePath('nodejs.png'), {
-        'Content-Type': 'image/png',
-      })
-      .get('/assets/testing/pyramid.jpeg')
-      .replyWithFile(200, getFixturePath('pyramid.jpeg'), {
-        'Content-Type': 'image/jpeg',
-      })
-      .get('/assets/application.css')
-      .replyWithFile(200, getFixturePath('application.css'), {
-        'Content-Type': 'text/css',
-      })
-      .get('/packs/js/runtime.js')
-      .replyWithFile(200, getFixturePath('runtime.js'), {
-        'Content-Type': 'text/javascript',
+  describe('positive cases', () => {
+    beforeEach(async () => {
+      expectedHtml = await fs.readFile(getFixturePath('/expected/hexlet-courses-result.html'), 'utf-8');
+
+      const resources = [
+        { path: '/courses', fixture: 'hexlet-courses.html', contentType: 'text/html; charset=UTF-8' },
+        { path: '/assets/professions/nodejs.png', fixture: 'nodejs.png', contentType: 'image/png' },
+        { path: '/assets/testing/pyramid.jpeg', fixture: 'pyramid.jpeg', contentType: 'image/jpeg' },
+        { path: '/assets/application.css', fixture: 'application.css', contentType: 'text/css' },
+        { path: '/packs/js/runtime.js', fixture: 'runtime.js', contentType: 'text/javascript' },
+      ];
+
+      resources.forEach((resource) => {
+        nock('https://ru.hexlet.io')
+          .persist()
+          .get(resource.path)
+          .replyWithFile(200, getFixturePath(resource.fixture), {
+            'Content-Type': resource.contentType,
+          });
       });
+    });
 
-    const { filepath } = await loadPage('https://ru.hexlet.io/courses', tempPath);
+    it('should download page with resources', async () => {
+      const { filepath } = await loadPage('https://ru.hexlet.io/courses', tempPath);
+      const resultHtml = await fs.readFile(filepath, 'utf-8');
+      expect(resultHtml).toEqual(expectedHtml);
 
-    const expectedHtml = await fs.readFile(getFixturePath('/expected/hexlet-courses-result.html'), 'utf-8');
-    const resultHtml = await fs.readFile(filepath, 'utf-8');
-    expect(resultHtml).toEqual(expectedHtml);
+      const assetsToCheck = [
+        { in: 'nodejs.png', out: 'ru-hexlet-io-assets-professions-nodejs.png' },
+        { in: 'pyramid.jpeg', out: 'ru-hexlet-io-assets-testing-pyramid.jpeg' },
+        { in: 'application.css', out: 'ru-hexlet-io-assets-application.css' },
+        { in: 'runtime.js', out: 'ru-hexlet-io-packs-js-runtime.js' },
+        { in: 'hexlet-courses.html', out: 'ru-hexlet-io-courses.html' },
+      ];
 
-    const assetsToCheck = [
-      { in: 'nodejs.png', out: 'ru-hexlet-io-assets-professions-nodejs.png' },
-      { in: 'pyramid.jpeg', out: 'ru-hexlet-io-assets-testing-pyramid.jpeg' },
-      { in: 'application.css', out: 'ru-hexlet-io-assets-application.css' },
-      { in: 'runtime.js', out: 'ru-hexlet-io-packs-js-runtime.js' },
-      { in: 'hexlet-courses.html', out: 'ru-hexlet-io-courses.html' },
-    ];
+      await Promise.all(assetsToCheck.map(async (asset) => {
+        const expectedFile = await fs.readFile(getFixturePath(asset.in));
+        const resultFile = await fs.readFile(path.join(tempPath, 'ru-hexlet-io-courses_files', asset.out));
 
-    await Promise.all(assetsToCheck.map(async (asset) => {
-      const expectedHash = await fileHash(getFixturePath(asset.in));
-      const resultHash = await fileHash(path.join(tempPath, 'ru-hexlet-io-courses_files', asset.out));
-
-      expect(expectedHash).toEqual(resultHash);
-    }));
+        expect(expectedFile.equals(resultFile)).toBeTruthy();
+      }));
+    });
   });
 
-  it('should handle filesystem errors', async () => {
-    nock('http://test.com')
-      .get('/books')
-      .reply(200);
+  describe('negative cases', () => {
+    beforeEach(async () => {
+      nock('https://ru.hexlet.io')
+        .persist()
+        .get('/courses')
+        .replyWithFile(200, getFixturePath('hexlet-courses.html'), {
+          'Content-Type': 'text/html; charset=UTF-8',
+        });
+    });
 
-    const notExistingPath = path.join(tempPath, 'not_existing_dir');
-    await expect(loadPage('http://test.com/books', notExistingPath)).rejects.toThrow();
-  });
+    it('should handle filesystem errors', async () => {
+      const notExistingPath = path.join(tempPath, 'not_existing_dir');
+      await expect(loadPage('https://ru.hexlet.io/courses', notExistingPath)).rejects.toThrow();
+    });
 
-  it('should handle resource access errors', async () => {
-    nock('https://ru.hexlet.io')
-      .persist()
-      .get('/courses')
-      .replyWithFile(200, getFixturePath('hexlet-courses.html'), {
-        'Content-Type': 'text/html; charset=UTF-8',
-      })
-      .get('/packs/js/runtime.js')
-      .replyWithFile(500, getFixturePath('runtime.js'), {
-        'Content-Type': 'text/javascript',
-      });
+    test.each([
+      401,
+      403,
+      404,
+      500,
+    ])('should handle %d errors', async (errorCode) => {
+      nock('https://ru.hexlet.io')
+        .persist()
+        .get('/packs/js/runtime.js')
+        .reply(errorCode);
 
-    await expect(loadPage('https://ru.hexlet.io/courses', tempPath)).rejects.toThrow();
+      await expect(loadPage('https://ru.hexlet.io/courses', tempPath)).rejects.toThrow();
+    });
   });
 });
