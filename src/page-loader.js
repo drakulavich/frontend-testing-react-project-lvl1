@@ -1,12 +1,13 @@
 // @ts-check
 import * as cheerio from 'cheerio';
+import _ from 'lodash';
 import axios from 'axios';
 // eslint-disable-next-line no-unused-vars
 import axiosDebugLog from 'axios-debug-log';
 import { writeFile, mkdir } from 'fs/promises';
 import debug from 'debug';
 import path from 'path';
-import { getResourceUrl, urlToFilename, uniq } from './utils.js';
+import { getResourceUrl, urlToFilename } from './utils.js';
 import ResourceAccessError from './errors/resource-error.js';
 import FsAccessError from './errors/fs-error.js';
 
@@ -39,7 +40,7 @@ const replaceToLocalResources = (pageUrl, content) => {
 
   return {
     html: $.html(),
-    resources: uniq(resources),
+    resources: _.uniq(resources),
   };
 };
 
@@ -65,9 +66,8 @@ export default async (pageUrl, outputPath = process.cwd()) => {
           const localFilename = path.join(resourcesPath, urlToFilename(resource));
           writeFile(localFilename, result.data);
         })
-        .catch((err) => {
-          throw new ResourceAccessError(`${resource} resource downloading: ${err.message}`);
-        }));
+        // Ignore resource download errors
+        .catch(() => logApp(`Failed to download resource ${resource}`)));
     await Promise.all(promises);
   }
   const filepath = path.join(outputPath, urlToFilename(pageUrl));

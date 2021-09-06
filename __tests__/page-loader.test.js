@@ -71,7 +71,6 @@ describe('page-loader', () => {
   describe('negative cases', () => {
     beforeEach(async () => {
       nock('https://ru.hexlet.io')
-        .persist()
         .get('/courses')
         .replyWithFile(200, getFixturePath('hexlet-courses.html'), {
           'Content-Type': 'text/html; charset=UTF-8',
@@ -90,11 +89,10 @@ describe('page-loader', () => {
       500,
     ])('should handle %d errors', async (errorCode) => {
       nock('https://ru.hexlet.io')
-        .persist()
-        .get('/packs/js/runtime.js')
+        .get('/pagewitherror')
         .reply(errorCode);
 
-      await expect(loadPage('https://ru.hexlet.io/courses', tempPath)).rejects.toThrow();
+      await expect(loadPage('https://ru.hexlet.io/pagewitherror', tempPath)).rejects.toThrow();
     });
   });
 });

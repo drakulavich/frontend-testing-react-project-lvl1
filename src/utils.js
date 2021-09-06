@@ -1,7 +1,5 @@
 import _ from 'lodash';
 
-const uniq = (elements) => _.uniq(elements);
-
 const urlToFilename = (urlString, defaultExtension = '.html') => {
   const url = new URL(urlString);
   const resource = url.pathname.split('.');
@@ -15,7 +13,7 @@ const getResourceUrl = (pageUrl, source) => {
   const pageUrlObj = new URL(pageUrl);
   let result;
 
-  if (source.includes('base64')) {
+  if ((!source) || (source.includes('base64'))) {
     return result;
   }
   if (source.startsWith('http')) {
@@ -31,4 +29,4 @@ const getResourceUrl = (pageUrl, source) => {
   return result;
 };
 
-export { uniq, urlToFilename, getResourceUrl };
+export { urlToFilename, getResourceUrl };
